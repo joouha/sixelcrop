@@ -2,7 +2,7 @@
 
 from typing import Generator, Optional
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __author__ = "Josiah Outram Halstead"
 __email__ = "josiah@halstead.email"
 __copyright__ = f"© 2022, {__author__}"
@@ -61,7 +61,6 @@ def sixelcrop(
                     params = ["", "", ""]
                     char = data[i]
                     i += 1
-                    param_index = 0
                     while char in "0123456789;":
                         if char == ";":
                             params.append("")
@@ -87,7 +86,7 @@ def sixelcrop(
 
                 # If we are at the end of the image collect and add the footer
                 elif char == "\\":
-                    yield from "\\\\"
+                    yield "\\"
                     return
                 continue
 
