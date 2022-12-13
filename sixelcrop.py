@@ -2,7 +2,7 @@
 
 from typing import Generator, Optional
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __author__ = "Josiah Outram Halstead"
 __email__ = "josiah@halstead.email"
 __copyright__ = f"© 2022, {__author__}"
