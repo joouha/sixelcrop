@@ -35,13 +35,12 @@ Source = "https://github.com/joouha/sixelcrop"
 sixelcrop = "sixelcrop:cli"
 
 [tool.hatch.version]
-path = "sixelcrop.py"
+path = "sixelcrop/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 exclude = [
-  ".mypy_cache",
+  ".*_cache",
   "/.git",
-  "/.github",
   "/docs",
 ]
 
