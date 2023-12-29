@@ -46,7 +46,12 @@ def sixelcrop(
 
         # Skip to the first instance of "\x1bP"
         if not data.startswith("\x1bP"):
-            data = data[data.find("\x1bP"):]
+            if (start := data.find("\x1bP")) > 0:
+                data = data[start:]
+            else:
+                # We do not have any sixel data, so return nothing
+                yield ""
+                return
 
         while True:
             # Retrieve the next character from the input sixel image string
