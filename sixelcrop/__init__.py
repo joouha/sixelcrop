@@ -2,7 +2,7 @@
 
 from typing import Generator, Optional
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 __author__ = "Josiah Outram Halstead"
 __email__ = "josiah@halstead.email"
 __copyright__ = f"© 2023, {__author__}"
@@ -283,6 +283,10 @@ def sixelcrop(
                         if char == "$":
                             line += char
                             char = data[i]
+                            # Check for end of sixel command
+                            if char == "\x1b":
+                                yield from "\x1b\\"
+                                return
                             i += 1
                             pixel_col = 0
                             continue
