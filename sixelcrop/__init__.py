@@ -2,10 +2,10 @@
 
 from typing import Generator, Optional
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 __author__ = "Josiah Outram Halstead"
 __email__ = "josiah@halstead.email"
-__copyright__ = f"© 2022, {__author__}"
+__copyright__ = f"© 2023, {__author__}"
 
 
 def sixelcrop(
@@ -44,8 +44,12 @@ def sixelcrop(
         # Stores the most recent color selection
         color_prev = ""
 
+        # Skip to the first instance of "\x1bP"
+        if not data.startswith("\x1bP"):
+            data = data[data.find("\x1bP"):]
+
         while True:
-            # Retriev the next character from the input sixel image string
+            # Retrieve the next character from the input sixel image string
             char = data[i]
             i += 1
 
@@ -59,25 +63,28 @@ def sixelcrop(
                     # default, as we do not shift pixels between sixel lines, and we
                     # want skipped parts of sixel lines to be transparent
                     params = ["", "", ""]
+                    p = 0
                     char = data[i]
                     i += 1
                     while char in "0123456789;":
                         if char == ";":
-                            params.append("")
+                            p += 1
                         else:
-                            params[-1] += char
+                            params[p] += char
                         char = data[i]
                         i += 1
 
                     # Set default control string parameters
-                    if not params[0]:
-                        params[0] = "0"
+                    # Set pixel aspect ratio to 1:1 by default
+                    # if not params[0]:
+                    #     params[0] = "7"
                     # P2 == 1 sets pixel positions specified as 0 to remain at their
                     # current color - this makes skipped cropped regions transparent
                     if not params[1]:
                         params[1] = "1"
-                    if not params[2]:
-                        params[2] = "0"
+                    # Do not set default for horizontal grid size
+                    # if not params[2]:
+                        # params[2] = "0"
                     yield from ";".join(params)
 
                     # The device control string should end with a "q"
@@ -104,19 +111,26 @@ def sixelcrop(
                         params[-1] += char
                     char = data[i]
                     i += 1
-                # Adjust image height
-                if h is None:
-                    h = int(params[3]) - y
-                params[3] = str(y + h - (y - y % 6))
                 # Adjust image width
-                if w is None:
-                    w = int(params[2]) - x
-                params[2] = str(w)
+                if len(params) >= 3:
+                    if w is None:
+                        w = int(params[2]) - x
+                # Adjust image height
+                if len(params) >= 4 and h is None:
+                    h = int(params[3]) - y
+
+                while len(params) < 4:
+                    params.append("")
+
+                if h is not None:
+                    params[3] = str(y + h - (y - y % 6))
+                if w is not None:
+                    params[2] = str(w)
 
                 yield from ";".join(params)
 
             # For type checking
-            assert h is not None
+            # assert h is not None
 
             # Collect color commands
             if char == "#":
@@ -154,6 +168,9 @@ def sixelcrop(
                     while char != "-":
                         char = data[i]
                         i += 1
+                        # Check if we unexpectedly reached the end of the image
+                        if char == "\x1b":
+                            return
 
                 # If we are only cropping the image's height, we don't need to parse each
                 # line in the cropped region
@@ -173,7 +190,7 @@ def sixelcrop(
                         line += char
 
                     # Edit the last row of sixels to remove unrequired lower pixel rows
-                    elif pixel_row > 0 and pixel_row < y + h < pixel_row + 6:
+                    elif h is not None and pixel_row > 0 and pixel_row < y + h < pixel_row + 6:
                         n = y + h - pixel_row
                         while char != "-":
                             # Transform each sixel character in the sixel row to mask
@@ -195,7 +212,7 @@ def sixelcrop(
 
                 # Otherwise, we need to parse and modify the lines in the target region to
                 # crop in the x-direction
-                else:
+                elif h:
                     first_row = pixel_row < y < pixel_row + 6
                     last_row = pixel_row < y + h < pixel_row + 6
 
@@ -235,7 +252,7 @@ def sixelcrop(
                                 char = data[i]
                                 i += 1
 
-                            n_repeats = repeats = int(repeat_s)
+                            n_repeats = repeats = int(repeat_s or "1")
 
                             # If this repeat takes us into the target region, only keep the
                             # encroaching part
@@ -323,12 +340,12 @@ def sixelcrop(
                     line += char
 
             # If this line is within the target region, yield the line
-            if y - 6 < pixel_row < y + h:
+            if h and  y - 6 < pixel_row < y + h:
                 yield from line
             pixel_row += 6
 
             # Do not bother parsing lines beyond the end of the target region
-            if pixel_row >= y + h:
+            if h and pixel_row >= y + h:
                 yield from "\x1b\\"
                 return
 

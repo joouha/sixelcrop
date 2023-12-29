@@ -1,4 +1,4 @@
-<img src="https://user-images.githubusercontent.com/12154190/199075915-04265c49-5392-4126-b34f-21bdff5cdc28.png" align="right" width=300)>
+<img src="https://user-images.githubusercontent.com/12154190/199075915-04265c49-5392-4126-b34f-21bdff5cdc28.png" align="right" width="300">
 
 # sixelcrop
 
