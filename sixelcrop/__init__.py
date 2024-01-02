@@ -2,7 +2,7 @@
 
 from typing import Generator, Optional
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 __author__ = "Josiah Outram Halstead"
 __email__ = "josiah@halstead.email"
 __copyright__ = f"© 2023, {__author__}"
@@ -23,7 +23,6 @@ def sixelcrop(
         y: The vertical offset of the left edge of the target region
         w: The width of the target region
         h: The height of the target region
-
     """
 
     def _crop(
@@ -89,12 +88,15 @@ def sixelcrop(
                         params[1] = "1"
                     # Do not set default for horizontal grid size
                     # if not params[2]:
-                        # params[2] = "0"
+                    # params[2] = "0"
                     yield from ";".join(params)
 
                     # The device control string should end with a "q"
                     assert char == "q"
                     yield char
+
+                    # Set background to black by default
+                    # yield '#0;2;0;0;0'
 
                 # If we are at the end of the image collect and add the footer
                 elif char == "\\":
@@ -167,7 +169,6 @@ def sixelcrop(
 
             # Continue parsing the line until we encounter a new-line character
             if char != "-":
-
                 # If this line is before the top of the retained region, skip it quickly
                 if pixel_row < y - 6:
                     while char != "-":
@@ -180,7 +181,6 @@ def sixelcrop(
                 # If we are only cropping the image's height, we don't need to parse each
                 # line in the cropped region
                 elif w is None:
-
                     # Edit the first row of sixels to remove unrequired upper pixel rows
                     if pixel_row < y < pixel_row + 6:
                         n = y - pixel_row
@@ -195,13 +195,17 @@ def sixelcrop(
                         line += char
 
                     # Edit the last row of sixels to remove unrequired lower pixel rows
-                    elif h is not None and pixel_row > 0 and pixel_row < y + h < pixel_row + 6:
+                    elif (
+                        h is not None
+                        and pixel_row > 0
+                        and pixel_row < y + h < pixel_row + 6
+                    ):
                         n = y + h - pixel_row
                         while char != "-":
                             # Transform each sixel character in the sixel row to mask
                             # the last n rows of pixels
                             if (sixel := ord(char)) >= 63:
-                                char = chr(((sixel - 63) & ((2**n - 1))) + 63)
+                                char = chr(((sixel - 63) & (2**n - 1)) + 63)
                             line += char
                             char = data[i]
                             i += 1
@@ -229,7 +233,6 @@ def sixelcrop(
                     # Keep parsing until we reach the end of the sixel row or the end
                     # of the image
                     while char not in "-\x1b":
-
                         # The color introducer ("#") start a color selection sequence
                         # Record the current color selection
                         if char == "#":
@@ -303,7 +306,7 @@ def sixelcrop(
                         elif last_row:
                             n = y + h - pixel_row
                             if (sixel := ord(char)) >= 63:
-                                char = chr(((sixel - 63) & ((2**n - 1))) + 63)
+                                char = chr(((sixel - 63) & (2**n - 1)) + 63)
 
                         # If the last encountered sixel is within the target region, we
                         # need to add it to the output
@@ -349,7 +352,7 @@ def sixelcrop(
                     line += char
 
             # If this line is within the target region, yield the line
-            if h and  y - 6 < pixel_row < y + h:
+            if h and y - 6 < pixel_row < y + h:
                 yield from line
             pixel_row += 6
 
@@ -398,6 +401,12 @@ def cli() -> None:
         "-h", "--height", type=int, default=None, help="The height of the target region"
     )
     parser.add_argument(
+        "--no-private-colors",
+        default=False,
+        action="store_true",
+        help="Do not use private colors for each graphic",
+    )
+    parser.add_argument(
         "filename",
         type=Path,
         default=Path("/dev/stdin"),
@@ -409,7 +418,12 @@ def cli() -> None:
         args.filename = Path("/dev/stdin")
     data = args.filename.read_text()
 
+    # Use private color registers for each graphic
+    if not args.no_private_colors:
+        sys.stdout.write("\x1b[?1070h")
+
     sys.stdout.write(sixelcrop(data, args.left, args.top, args.width, args.height))
+    sys.stdout.flush()
 
 
 if __name__ == "__main__":
