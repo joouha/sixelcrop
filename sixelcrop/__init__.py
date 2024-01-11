@@ -170,10 +170,22 @@ def sixelcrop(
             # Continue parsing the line until we encounter a new-line character
             if char != "-":
                 # If this line is before the top of the retained region, skip it quickly
+                # but check for color definitions
                 if pixel_row < y - 6:
                     while char != "-":
                         char = data[i]
                         i += 1
+
+                        # Check for color definitions in skipped lines
+                        if char == "#":
+                            color = ""
+                            while char in "#0123456789;":
+                                color += char
+                                char = data[i]
+                                i += 1
+                            if ";" in color:
+                                yield from color
+
                         # Check if we unexpectedly reached the end of the image
                         if char == "\x1b":
                             return
@@ -232,15 +244,32 @@ def sixelcrop(
 
                     # Keep parsing until we reach the end of the sixel row or the end
                     # of the image
-                    while char not in "-\x1b":
+                    while char not in "-":
+                        # End the output if we reach the end of the input
+                        if char == "\x1b":
+                            yield from "\x1b\\"
+                            return
+
+                        # Ignore whitespace
+                        if char in "\n ":
+                            try:
+                                char = data[i]
+                            except IndexError:
+                                raise
+                            i += 1
+                            continue
+
                         # The color introducer ("#") start a color selection sequence
-                        # Record the current color selection
+                        # or a new color defintion. Record the current color
                         if char == "#":
                             color = ""
-                            while char in "#0123456789":
+                            while char in "#0123456789;":
                                 color += char
                                 char = data[i]
                                 i += 1
+                            # Check for color definitions
+                            if ";" in color:
+                                yield from color
                             continue
 
                         # If we encounter a graphics repeat introducer "!", we may need
@@ -262,8 +291,8 @@ def sixelcrop(
 
                             n_repeats = repeats = int(repeat_s or "1")
 
-                            # If this repeat takes us into the target region, only keep the
-                            # encroaching part
+                            # If this repeat takes us into the target region, only keep
+                            # the encroaching part
                             if x < pixel_col + repeats < x + w:
                                 n_repeats = min(
                                     pixel_col + repeats - x,
@@ -275,23 +304,26 @@ def sixelcrop(
                             elif x + w < pixel_col + repeats:
                                 n_repeats = min(n_repeats, x + w - pixel_col)
 
-                            # Ensure we never have more repeats than the width of the image
+                            # Ensure we never have more repeats than the width of the
+                            # image
                             n_repeats = min(n_repeats, w)
 
                             # Generate the transformed graphics repeat control function
-                            repeat_s = f"!{n_repeats}"
+                            # Remove single character repeats
+                            repeat_s = f"!{n_repeats}" if n_repeats > 1 else ""
 
                         # If we encounter a graphics carriage return ($), reset the
                         # pixel position back to the start of the line
                         if char == "$":
+                            pixel_col = 0
                             line += char
                             char = data[i]
+                            i += 1
+
                             # Check for end of sixel command
                             if char == "\x1b":
                                 yield from "\x1b\\"
                                 return
-                            i += 1
-                            pixel_col = 0
                             continue
 
                         # If this is the first sixel row of the target region, we may
@@ -301,7 +333,7 @@ def sixelcrop(
                             if (sixel := ord(char)) >= 63:
                                 char = chr(((sixel - 63) & (63 - (2**n - 1))) + 63)
 
-                        # If this is the first sixel row of the target region, we may
+                        # If this is the last sixel row of the target region, we may
                         # have to mask pixels at the bottom of the row
                         elif last_row:
                             n = y + h - pixel_row
@@ -315,13 +347,13 @@ def sixelcrop(
                             and x < pixel_col + repeats
                             and pixel_col + n_repeats <= x + w
                         ):
-                            # If we are at the start of a new line of sixels, we always
+                            # If we are at the start of a new line of sixels, add
                             # the last encountered color command, as the original color
                             # command may be cropped out
-                            if not line:
+                            if not line and not color:
                                 line += color_prev
                             # Add the new color command if the color has been changed
-                            if color != color_prev:
+                            elif color != color_prev:
                                 color_prev = color
                                 line += color
                             # Add the character(s)
@@ -333,11 +365,6 @@ def sixelcrop(
                         # Grab the next character
                         char = data[i]
                         i += 1
-
-                        # End the output if we reach the end of the input
-                        if char == "\x1b":
-                            yield from "\x1b\\"
-                            return
 
                         # If we are now outside the the target region on the current
                         # row, we can skip the remaining characters up until the next
