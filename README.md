@@ -25,7 +25,7 @@ pip install sixelcrop
 ### Command Line
 
 ```
-usage: sixelcrop [--help] [-x int] [-y int] [-w int] [-h int] Path
+usage: sixelcrop [--help] [-x int] [-y int] [-w int] [-h int] [--no-private-colors] Path
 
 Crop a sixel image in sixel space
 
@@ -38,7 +38,7 @@ options:
   -y int, --top int     The offset of the top edge of the target region
   -w int, --width int   The width of the target region
   -h int, --height int  The height of the target region
-
+  --no-private-colors   Do not use private colors for each graphic
 ```
 
 Example:
