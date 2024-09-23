@@ -260,7 +260,7 @@ def sixelcrop(
                             continue
 
                         # The color introducer ("#") start a color selection sequence
-                        # or a new color defintion. Record the current color
+                        # or a new color definition. Record the current color
                         if char == "#":
                             color = ""
                             while char in "#0123456789;":
