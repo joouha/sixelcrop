@@ -374,6 +374,9 @@ def sixelcrop(
                             while char not in "-$":
                                 char = data[i]
                                 i += 1
+                                # Check if we unexpectedly reached the end of the image
+                                if char == "\x1b":
+                                    break
 
                     # Add the line break character to the line
                     line += char
